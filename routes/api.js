@@ -3,86 +3,69 @@ const router = express.Router()
 const { ROOT_APIENDPOINT } = require("../config")
 const request = require("request")
 
+const paypal = require("@paypal/checkout-server-sdk")
+const payPalClient = require("../common/paypalSdkClient")
+
 router.get("/health", (req, res, next) => {
   res.status(200).send("api is up")
 })
 
-router.post("/create-payment", (req, res, next) => {
-  const { amount } = req.body
-  request.post(
-    `${ROOT_APIENDPOINT}/v1/payments/payment`,
-    {
-      auth: {
-        user: process.env.CLIENT_ID,
-        pass: process.env.SECRET,
-      },
-      body: {
-        intent: "sale",
-        payer: {
-          payment_method: "paypal",
-        },
-        transactions: [
-          {
-            amount: {
-              total: amount,
-              currency: "USD",
-            },
-          },
-        ],
-        redirect_urls: {
-          return_url: "https://example.com",
-          cancel_url: "https://example.com",
-        },
-      },
-      json: true,
+router.post("/create-paypal-transaction", async (req, res) => {
+  const request = new paypal.orders.OrdersCreateRequest()
+  request.prefer("return=representation")
+  request.requestBody({
+    intent: "CAPTURE",
+    application_context: {
+      return_url: "https://example.com",
+      cancel_url: "https://example.com",
     },
-    function (err, response) {
-      if (err) {
-        console.error(err)
-        return res.sendStatus(500)
-      }
-      // 3. Return the payment ID to the client
-      res.json({
-        id: response.body.id,
-      })
-    }
-  )
-  // res.status(200).send("ok")
+    purchase_units: [
+      {
+        amount: {
+          currency_code: "USD",
+          value: "2.00",
+        },
+      },
+    ],
+  })
+
+  let order
+  try {
+    order = await payPalClient.client().execute(request)
+  } catch (err) {
+    // 4. Handle any errors from the call
+    console.error(err)
+    return res.status(500)
+  }
+
+  // 5. Return a successful response to the client with the order ID
+  res.status(200).json({
+    orderID: order.result.id,
+  })
 })
 
-router.post("/execute-payment", (req, res, next) => {
-  const { paymentID, payerID } = req.body
-  request.post(
-    `${ROOT_APIENDPOINT}/v1/payments/payment/${paymentID}/execute`,
-    {
-      auth: {
-        user: process.env.CLIENT_ID,
-        pass: process.env.SECRET,
-      },
-      body: {
-        payer_id: payerID,
-        transactions: [
-          {
-            amount: {
-              total: "10.99",
-              currency: "USD",
-            },
-          },
-        ],
-      },
-      json: true,
-    },
-    function (err, response) {
-      if (err) {
-        console.error(err)
-        return res.sendStatus(500)
-      }
-      // 4. Return a success response to the client
-      res.json({
-        status: "success",
-      })
-    }
-  )
+router.post("/capture-paypal-transaction", async (req, res) => {
+  // 2a. Get the order ID from the request body
+  const orderID = req.body.orderID
+
+  // 3. Call PayPal to capture the order
+  const request = new paypal.orders.OrdersCaptureRequest(orderID)
+  request.requestBody({})
+
+  try {
+    const capture = await payPalClient.client().execute(request)
+
+    // 4. Save the capture ID to your database. Implement logic to save capture to your database for future reference.
+    const captureID = capture.result.purchase_units[0].payments.captures[0].id
+    // await database.saveCaptureID(captureID);
+  } catch (err) {
+    // 5. Handle any errors from the call
+    console.error(err)
+    return res.status(500)
+  }
+
+  // 6. Return a successful response to the client
+  res.status(200).send("done")
 })
 
 module.exports = router
