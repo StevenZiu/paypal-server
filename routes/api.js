@@ -23,7 +23,7 @@ router.post("/create-paypal-transaction", async (req, res) => {
       {
         amount: {
           currency_code: "USD",
-          value: "0.369",
+          value: "0.36",
         },
       },
     ],
