@@ -23,7 +23,7 @@ router.post("/create-paypal-transaction", async (req, res) => {
       {
         amount: {
           currency_code: "USD",
-          value: "2.00",
+          value: "0.369",
         },
       },
     ],
@@ -52,12 +52,22 @@ router.post("/capture-paypal-transaction", async (req, res) => {
   const request = new paypal.orders.OrdersCaptureRequest(orderID)
   request.requestBody({})
 
+  const requestTransactionDetail = new paypal.orders.OrdersGetRequest(orderID)
+
   try {
     const capture = await payPalClient.client().execute(request)
 
     // 4. Save the capture ID to your database. Implement logic to save capture to your database for future reference.
     const captureID = capture.result.purchase_units[0].payments.captures[0].id
     // await database.saveCaptureID(captureID);
+
+    // get transaction detail information
+    const transactionDetail = await payPalClient
+      .client()
+      .execute(requestTransactionDetail)
+
+    console.log(transactionDetail.result)
+    res.status(200).send(transactionDetail.result)
   } catch (err) {
     // 5. Handle any errors from the call
     console.error(err)
@@ -65,7 +75,6 @@ router.post("/capture-paypal-transaction", async (req, res) => {
   }
 
   // 6. Return a successful response to the client
-  res.status(200).send("done")
 })
 
 module.exports = router
