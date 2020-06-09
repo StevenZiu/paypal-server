@@ -1,5 +1,4 @@
-## PayPal Checkout Demo (Server Side Implementation backend) ![img](https://github.com/stevenziu/paypal-server/workflows/Build%20and%20Deploy%20to%20Google%20App%20Engine/badge.svg
-)
+## PayPal Checkout Demo (Server Side Implementation backend) ![img](https://github.com/stevenziu/paypal-server/workflows/Build%20and%20Deploy%20to%20Google%20App%20Engine/badge.svg)
 
 This backend was bootstrapped with Express.
 
